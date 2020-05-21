@@ -1,13 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Group_project
 {
     [Serializable]
     public class Customer //customer class
     {
-        string FirstName { get; }
-        string LastName { get; }
-        int ID { get; }
+        public string FirstName { get; }
+        public string LastName { get; }
+        public int ID { get; }
 
         public Customer(int idno, string fname, string lname)  //constructor
         {
@@ -171,14 +174,42 @@ namespace Group_project
             static void Main(string[] args) //main
             {
                 bool isAnotherCustomer = true;
+                
                 while (isAnotherCustomer)
                 {
-                    // prompt for customer
-                    Customer customer = new Customer(
-                        InputHelper.PromptFor("Customer first name >> "),
-                        InputHelper.PromptFor("Customer last name >> "));
-                    // TODO save customer to file and print result of the filename in messagebox
-                    // TODO exception handling for file save
+                    List<string> customerFilesNames = IOHelper.GetCustomerNames();
+                    Customer customer = null;
+                     
+                    if (customerFilesNames.Count > 0)
+                    {
+                        Console.WriteLine("Customers found. Please select from any of these\n0. New customer");
+                        Dictionary<int, string> customerMap = new Dictionary<int, string>();
+                        int i = 1;
+                        foreach (string customerFileName in customerFilesNames)
+                        {
+                            customerMap.Add(i, customerFileName);
+                            Console.WriteLine("{0}. {1}", i, customerFileName);
+                            i++;
+                        }
+                        string selectedCustomerFileName;
+                        if (customerMap.TryGetValue(InputHelper.PromptForInt("Please enter a value >> ",
+                            x => customerMap.ContainsKey(x) || x == 0),
+                            out selectedCustomerFileName))
+                        {
+                            customer = IOHelper.LoadCustomer(selectedCustomerFileName);
+                        }
+                    }
+                
+                    if (customer == null)
+                    {
+                        // prompt for customer
+                        customer = new Customer(
+                            InputHelper.PromptFor("Customer first name >> "),
+                            InputHelper.PromptFor("Customer last name >> "));
+                        IOHelper.SaveCustomer(customer);
+                    }
+
+                    // TODO print result of the filename in messagebox
                     // TODO use inheritance and interface somewhere
                     // TODO use static data members
 
@@ -193,6 +224,62 @@ namespace Group_project
                     isAnotherCustomer = InputHelper.PromptForInt("Is there another customer?\n1. Yes\n2. No\n Enter your selection >>",
                         x => x == 1 || x == 2) == 1;
                 }
+            }
+        }
+
+        // helper class for IO operations
+        class IOHelper
+        {
+            private static BinaryFormatter formatter = new BinaryFormatter(); // static data member
+            public static void SaveCustomer(Customer customer)
+            {
+                string fileName = string.Format("Customer{0}.dat", customer.ID);
+                try
+                {
+                    using (Stream stream = new FileStream(fileName, FileMode.Create, FileAccess.Write))
+                    {
+                        formatter.Serialize(stream, customer);
+                    }
+                    Console.WriteLine("{0} was saved.", fileName);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("There was an issue saving the customer.");
+                    Console.WriteLine(e.ToString());
+                }
+            }
+
+            public static Customer LoadCustomer(string fileName)
+            {
+                Customer customer = null;
+                try
+                {
+                    using (Stream stream = new FileStream(fileName, FileMode.Open, FileAccess.Read))
+                    {
+                        customer = (Customer) formatter.Deserialize(stream);
+                    }
+                    Console.WriteLine("{0} was loaded.", fileName);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("There was an issue saving the customer.");
+                    Console.WriteLine(e.ToString());
+                }
+                return customer;
+            }
+
+            public static List<string> GetCustomerNames()
+            {
+                List<string> customerFiles = new List<String>();
+                string[] files = Directory.GetFiles(".");
+                foreach(string file in files)
+                {
+                    if (file.Contains("Customer") && file.Contains(".dat"))
+                    {
+                        customerFiles.Add(file);
+                    }
+                }
+                return customerFiles;
             }
         }
 
