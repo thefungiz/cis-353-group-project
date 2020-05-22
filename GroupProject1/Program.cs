@@ -2,12 +2,18 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
 using System.Windows.Forms;
 
 namespace Group_project
 {
+    public interface ISummerizable // interface defining contract for returning summary as string
+    {
+        string GetSummary();
+    }
+
     [Serializable]
-    public class Customer //customer class
+    public class Customer : ISummerizable //customer class
     {
         public string FirstName { get; }
         public string LastName { get; }
@@ -36,11 +42,16 @@ namespace Group_project
 
         public override string ToString() //override To String method
         {
-            return " ID number: " + ID + " Last Name: " + FirstName + " First name: " + LastName;
+            return "Customer: ID number: " + ID + " Last Name: " + FirstName + " First name: " + LastName;
+        }
+
+        public string GetSummary()
+        {
+            return ToString();
         }
     }
 
-    public class Cone
+    public class Cone : ISummerizable
     {
         //constant values for scoop and cone
         const double SCOOP = 0.5;
@@ -62,7 +73,7 @@ namespace Group_project
             Price = (CONE + (SCOOP * ScoopsRequested));
         }
 
-        public void DisplayConeSummary()
+        public string GetSummary()
         {
             string iCream = "Ice Cream";
             string yogurt = "Yogurt";
@@ -116,11 +127,12 @@ namespace Group_project
                     break;
             }
 
-            //Output Order info
-            Console.WriteLine("The cone with {0} scoops of {1} {2} served in a {3} will cost {4:c}.",
+            //  cone info
+            return string.Format("The cone with {0} scoops of {1} {2} served in a {3} will cost {4:c}.",
                 ScoopsRequested, flavor, iceVYog, coneSelection, Price);
         }
-        public class Order
+
+        public class Order : ISummerizable
         {
             private Customer Customer { get; }
             private Cone[] customerCones { get; }
@@ -157,18 +169,23 @@ namespace Group_project
                 }
             }
 
-            public void DisplaySummary()
+
+            public string GetSummary()
             {
+                StringBuilder stringBuilder = new StringBuilder("\n");
+                stringBuilder.Append(Customer.GetSummary());
+                stringBuilder.Append("\n");
                 double totalPrice = 0;
                 for (int i = 0; i < customerCones.Length && customerCones[i] != null; i++)
                 {
-                    // display individual cone summary
-                    customerCones[i].DisplayConeSummary();
+                    // generate individual cone summary
+                    stringBuilder.Append(customerCones[i].GetSummary());
+                    stringBuilder.Append("\n");
                     totalPrice += customerCones[i].Price;
                 }
-                Console.WriteLine("Your total price comes to {0:c}", totalPrice);
+                stringBuilder.Append(string.Format("Your total price for this order comes to {0:c}", totalPrice));
+                return stringBuilder.ToString();
             }
-
         }
         class Program
         {
@@ -178,21 +195,14 @@ namespace Group_project
                 
                 while (isAnotherCustomer)
                 {
-                    List<string> customerFilesNames = IOHelper.GetCustomerNames();
+                    Dictionary<int, string> customerMap = IOHelper.GetCustomerFileMap();
                     Customer customer = null;
                      
-                    if (customerFilesNames.Count > 0)
+                    if (customerMap.Count > 0)
                     {
                         Console.WriteLine("Customers found. Please select from any of these\n0. New customer");
-                        Dictionary<int, string> customerMap = new Dictionary<int, string>();
-                        int i = 1;
-                        foreach (string customerFileName in customerFilesNames)
-                        {
-                            {  }
-                            customerMap.Add(i, customerFileName);
-                            Console.WriteLine("{0}. {1}", i, customerFileName);
-                            i++;
-                        }
+                        new List<KeyValuePair<int, string>>(customerMap).ForEach(
+                            keyvaluePair => Console.WriteLine("{0}. {1}", keyvaluePair.Key, keyvaluePair.Value));
                         string selectedCustomerFileName;
                         if (customerMap.TryGetValue(InputHelper.PromptForInt("Please enter a value >> ",
                             x => customerMap.ContainsKey(x) || x == 0),
@@ -210,17 +220,16 @@ namespace Group_project
                             InputHelper.PromptFor("Customer last name >> "));
                         IOHelper.SaveCustomer(customer);
                     }
-
-                    // TODO print result of the filename in messagebox
-                    // TODO use inheritance and interface somewhere
+                    Console.WriteLine("Inputting order for customer:\n{0}\n", customer.GetSummary());
                     // TODO use static data members
 
                     // begin customer order
                     Order order = new Order(customer);
                     order.GetOrder();
-                    order.DisplaySummary();
 
-                    Console.WriteLine("\n Thank you come again!\n");
+                    // display summary
+                    Console.WriteLine(order.GetSummary());
+                    Console.WriteLine("\nThank you come again!\n");
 
                     // ask for another customer
                     isAnotherCustomer = InputHelper.PromptForInt("Is there another customer?\n1. Yes\n2. No\n Enter your selection >>",
@@ -232,7 +241,7 @@ namespace Group_project
         // helper class for IO operations
         class IOHelper
         {
-            private static BinaryFormatter formatter = new BinaryFormatter(); // static data member
+            private static BinaryFormatter formatter = new BinaryFormatter();
             public static void SaveCustomer(Customer customer)
             {
                 string fileName = string.Format("Customer{0}.dat", customer.ID);
@@ -270,7 +279,7 @@ namespace Group_project
                 return customer;
             }
 
-            public static List<string> GetCustomerNames()
+            private static List<string> GetCustomerNames()
             {
                 List<string> customerFiles = new List<String>();
                 string[] files = Directory.GetFiles(".");
@@ -282,6 +291,18 @@ namespace Group_project
                     }
                 }
                 return customerFiles;
+            }
+
+            public static Dictionary<int, string> GetCustomerFileMap()
+            {
+                Dictionary<int, string> customerMap = new Dictionary<int, string>();
+                int i = 1;
+                foreach (string customerFileName in GetCustomerNames())
+                {
+                    customerMap.Add(i, customerFileName);
+                    i++;
+                }
+                return customerMap;
             }
         }
 
