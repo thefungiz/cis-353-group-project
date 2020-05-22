@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Windows.Forms;
 
 namespace Group_project
 {
@@ -187,6 +188,7 @@ namespace Group_project
                         int i = 1;
                         foreach (string customerFileName in customerFilesNames)
                         {
+                            {  }
                             customerMap.Add(i, customerFileName);
                             Console.WriteLine("{0}. {1}", i, customerFileName);
                             i++;
@@ -240,7 +242,7 @@ namespace Group_project
                     {
                         formatter.Serialize(stream, customer);
                     }
-                    Console.WriteLine("{0} was saved.", fileName);
+                    MessageBox.Show(string.Format("{0} was saved.", fileName));
                 }
                 catch (Exception e)
                 {
@@ -258,7 +260,7 @@ namespace Group_project
                     {
                         customer = (Customer) formatter.Deserialize(stream);
                     }
-                    Console.WriteLine("{0} was loaded.", fileName);
+                    MessageBox.Show(string.Format("{0} was loaded.", fileName));
                 }
                 catch (Exception e)
                 {
